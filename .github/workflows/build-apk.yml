@@ -35,11 +35,10 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: 🟢 Setup Node.js 20
+      - name: 🟢 Setup Node.js 22 (LTS)
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          # Removed cache: 'npm' to prevent "Dependencies lock file is not found" errors
+          node-version: 22
 
       - name: ☕ Setup Java JDK 17
         uses: actions/setup-java@v4
