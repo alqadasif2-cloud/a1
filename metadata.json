@@ -1,0 +1,6 @@
+{
+  "name": "A«»M - تواصل بلا حدود",
+  "description": "تطبيق التواصل الاجتماعي والمكالمات الصوتية والمرئية بهوية A«»M الفخمة ونظام استعادة المكالمات 60 دقيقة.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

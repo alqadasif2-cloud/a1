@@ -1,0 +1,136 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile document storing personal information and friends",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "maxLength": 100 },
+        "username": { "type": "string", "maxLength": 50, "pattern": "^[a-zA-Z0-9_]+$" },
+        "email": { "type": "string", "maxLength": 150 },
+        "avatar": { "type": "string", "maxLength": 500000 },
+        "bio": { "type": "string", "maxLength": 250 },
+        "isOnline": { "type": "boolean" },
+        "lastSeen": { "type": "string", "maxLength": 100 },
+        "friends": { "type": "array" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "name", "username"]
+    },
+    "UsernameIndex": {
+      "title": "UsernameIndex",
+      "description": "Unique username indexing for instant search",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string", "maxLength": 100 },
+        "avatar": { "type": "string", "maxLength": 500000 }
+      },
+      "required": ["userId"]
+    },
+    "FriendRequest": {
+      "title": "FriendRequest",
+      "description": "Friend requests between users",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string", "maxLength": 100 },
+        "senderAvatar": { "type": "string", "maxLength": 500000 },
+        "receiverId": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "declined"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["senderId", "receiverId", "status"]
+    },
+    "Conversation": {
+      "title": "Conversation",
+      "description": "Conversation between two or more users",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "participants": { "type": "array" },
+        "participantData": { "type": "object" },
+        "lastMessage": { "type": "string", "maxLength": 1000 },
+        "lastMessageTime": { "type": "string", "maxLength": 50 },
+        "lastMessageType": { "type": "string", "enum": ["text", "image", "audio"] },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["participants"]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "Individual message inside a conversation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "senderId": { "type": "string" },
+        "text": { "type": "string", "maxLength": 5000 },
+        "type": { "type": "string", "enum": ["text", "image", "audio"] },
+        "mediaUrl": { "type": "string", "maxLength": 2000000 },
+        "audioDuration": { "type": "string", "maxLength": 20 },
+        "timestamp": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["senderId", "type"]
+    },
+    "CallSession": {
+      "title": "CallSession",
+      "description": "Real-time WebRTC audio/video call with 60-minute recovery grace period",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "roomId": { "type": "string" },
+        "callerId": { "type": "string" },
+        "callerName": { "type": "string", "maxLength": 100 },
+        "callerAvatar": { "type": "string", "maxLength": 500000 },
+        "receiverId": { "type": "string" },
+        "receiverName": { "type": "string", "maxLength": 100 },
+        "receiverAvatar": { "type": "string", "maxLength": 500000 },
+        "callType": { "type": "string", "enum": ["audio", "video"] },
+        "status": { "type": "string", "enum": ["incoming", "connected", "disconnected_waiting", "ended"] },
+        "startedAt": { "type": "number" },
+        "disconnectedAt": { "type": "number" },
+        "gracePeriodExpiresAt": { "type": "number" },
+        "offer": { "type": "object" },
+        "answer": { "type": "object" }
+      },
+      "required": ["callerId", "receiverId", "callType", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile collection"
+    },
+    "/usernames/{username}": {
+      "schema": "UsernameIndex",
+      "description": "Username indexing collection"
+    },
+    "/friendRequests/{requestId}": {
+      "schema": "FriendRequest",
+      "description": "Friend request collection"
+    },
+    "/conversations/{conversationId}": {
+      "schema": "Conversation",
+      "description": "Conversations collection"
+    },
+    "/conversations/{conversationId}/messages/{messageId}": {
+      "schema": "ChatMessage",
+      "description": "Subcollection of messages inside conversation"
+    },
+    "/calls/{callId}": {
+      "schema": "CallSession",
+      "description": "Call sessions collection"
+    },
+    "/calls/{callId}/callerCandidates/{candId}": {
+      "schema": { "type": "object" },
+      "description": "WebRTC ICE candidates from caller"
+    },
+    "/calls/{callId}/receiverCandidates/{candId}": {
+      "schema": { "type": "object" },
+      "description": "WebRTC ICE candidates from receiver"
+    }
+  }
+}
