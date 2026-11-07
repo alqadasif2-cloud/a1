@@ -46,6 +46,9 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: 🐘 Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
       - name: 🤖 Setup Android SDK & Accept Licenses
         run: |
           yes | sdkmanager --licenses 2>/dev/null || true
@@ -60,32 +63,36 @@ jobs:
 
       - name: 🔄 Ensure Android Platform & Gradle Wrapper
         run: |
-          # 1. If android folder does not exist in repository, create it automatically
+          # 1. Check if android platform exists; if not, add it on the fly
           if [ ! -d "android" ]; then
-            echo "⚡ android/ directory not found in repository. Initializing Capacitor Android platform on the fly..."
+            echo "⚡ android/ folder not found. Adding Android platform via Capacitor..."
             npx cap add android
           else
-            echo "⚡ android/ directory found. Syncing web assets and plugins..."
+            echo "⚡ android/ folder exists. Syncing web assets and plugins..."
             npx cap sync android
           fi
 
-          # 2. Ensure sdk.dir is defined in local.properties
+          # 2. Configure Android SDK path in local.properties
           if [ -n "$ANDROID_HOME" ]; then
             echo "sdk.dir=$ANDROID_HOME" > android/local.properties
           elif [ -n "$ANDROID_SDK_ROOT" ]; then
             echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
           fi
 
-          # 3. Ensure gradlew has executable permissions
-          if [ -f "android/gradlew" ]; then
-            chmod +x android/gradlew
-          else
-            echo "⚡ gradlew not found after sync. Forcing capacitor add android..."
-            npx cap add android || true
-            chmod +x android/gradlew || true
+          # 3. Ensure gradlew exists, or generate wrapper if missing
+          if [ ! -f "android/gradlew" ]; then
+            echo "⚡ android/gradlew not found, generating wrapper with Gradle..."
+            cd android
+            gradle wrapper || true
+            cd ..
           fi
 
-          # 4. Ensure camera, microphone and media permissions in AndroidManifest.xml
+          # 4. Grant executable permissions
+          if [ -f "android/gradlew" ]; then
+            chmod +x android/gradlew
+          fi
+
+          # 5. Inject media and call permissions if needed
           MANIFEST="android/app/src/main/AndroidManifest.xml"
           if [ -f "$MANIFEST" ] && ! grep -q "RECORD_AUDIO" "$MANIFEST"; then
             echo "Injecting media and call permissions into AndroidManifest.xml..."
@@ -96,20 +103,31 @@ jobs:
         if: "${{ github.event.inputs.build_type == 'debug' || github.event.inputs.build_type == 'both' || github.event_name != 'workflow_dispatch' }}"
         run: |
           cd android
-          ./gradlew assembleDebug --stacktrace --no-daemon
+          if [ -f "./gradlew" ]; then
+            ./gradlew assembleDebug --stacktrace --no-daemon
+          else
+            echo "⚡ ./gradlew not found, building directly using system Gradle..."
+            gradle assembleDebug --stacktrace --no-daemon
+          fi
 
       - name: 🔨 Build Android Release APK (Unsigned)
         if: "${{ github.event.inputs.build_type == 'release' || github.event.inputs.build_type == 'both' }}"
         run: |
           cd android
-          ./gradlew assembleRelease --stacktrace --no-daemon
+          if [ -f "./gradlew" ]; then
+            ./gradlew assembleRelease --stacktrace --no-daemon
+          else
+            echo "⚡ ./gradlew not found, building release directly using system Gradle..."
+            gradle assembleRelease --stacktrace --no-daemon
+          fi
 
       - name: 📤 Upload Debug APK Artifact
         if: "${{ github.event.inputs.build_type == 'debug' || github.event.inputs.build_type == 'both' || github.event_name != 'workflow_dispatch' }}"
         uses: actions/upload-artifact@v4
         with:
           name: AM-A«»M-app-debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -118,6 +136,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: AM-A«»M-app-release-unsigned
-          path: android/app/build/outputs/apk/release/app-release-unsigned.apk
+          path: |
+            android/app/build/outputs/apk/release/*.apk
           if-no-files-found: warn
           retention-days: 30
