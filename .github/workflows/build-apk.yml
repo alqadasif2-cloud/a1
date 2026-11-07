@@ -46,7 +46,7 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: 🤖 Accept Android SDK Licenses
+      - name: 🤖 Setup Android SDK & Accept Licenses
         run: |
           yes | sdkmanager --licenses 2>/dev/null || true
 
@@ -58,13 +58,39 @@ jobs:
         run: |
           npm run build
 
-      - name: 🔄 Sync Capacitor Android Platform
+      - name: 🔄 Ensure Android Platform & Gradle Wrapper
         run: |
-          npx cap sync android
+          # 1. If android folder does not exist in repository, create it automatically
+          if [ ! -d "android" ]; then
+            echo "⚡ android/ directory not found in repository. Initializing Capacitor Android platform on the fly..."
+            npx cap add android
+          else
+            echo "⚡ android/ directory found. Syncing web assets and plugins..."
+            npx cap sync android
+          fi
 
-      - name: 🔑 Grant Executable Permission to Gradle Wrapper
-        run: |
-          chmod +x android/gradlew
+          # 2. Ensure sdk.dir is defined in local.properties
+          if [ -n "$ANDROID_HOME" ]; then
+            echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+          elif [ -n "$ANDROID_SDK_ROOT" ]; then
+            echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
+          fi
+
+          # 3. Ensure gradlew has executable permissions
+          if [ -f "android/gradlew" ]; then
+            chmod +x android/gradlew
+          else
+            echo "⚡ gradlew not found after sync. Forcing capacitor add android..."
+            npx cap add android || true
+            chmod +x android/gradlew || true
+          fi
+
+          # 4. Ensure camera, microphone and media permissions in AndroidManifest.xml
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          if [ -f "$MANIFEST" ] && ! grep -q "RECORD_AUDIO" "$MANIFEST"; then
+            echo "Injecting media and call permissions into AndroidManifest.xml..."
+            sed -i '/<\/application>/a \    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />' "$MANIFEST"
+          fi
 
       - name: 🔨 Build Android Debug APK
         if: "${{ github.event.inputs.build_type == 'debug' || github.event.inputs.build_type == 'both' || github.event_name != 'workflow_dispatch' }}"
